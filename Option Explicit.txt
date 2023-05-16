@@ -1,5 +1,5 @@
 Option Explicit
-Public ws As Worksheet, arrayOutPut(), arrayOfCPI#(), wsCount As Byte, finalRow&, arrayIndex&(), arrayIntValue#(), countN&, arrayRow&, arrayInput, arrayOfSGA#(), arrayColumnN&, resultArray#(), arrayOfColumnWithNull&(), arrayOfCompanyID&(), arrayOfWs$(), arrayOfYear%(): Const depreciationRate As Double = 0.15: Const mostRecentCPI As Double = 124.266413825838
+Public ws As Worksheet, arrayOutPut(), arrayOfCPI#(), intValue#, bookAssetValue#, cpiValue#, wsCount As Byte, finalRow&, arrayIndex&(), arrayIntValue#(), countN&, arrayRow&, arrayInput, arrayOfSGA#(), arrayColumnN&, resultArray#(), arrayOfColumnWithNull&(), arrayOfCompanyID&(), arrayOfWs$(), arrayOfYear%(): Const depreciationRate As Double = 0.15: Const mostRecentCPI As Double = 124.266413825838
 '所有后期会重复使用的变量和常量
 
 '特别注意！！！
@@ -32,8 +32,7 @@ End Sub
 Sub ThreeMethodDataAdjust()
 '仅仅是一个方便把除了建立工作表外所有vba代码运行一遍的程序，各个代码的详情请去各代码位置查看
 Application.ScreenUpdating = False
-Call dataAnalyzeMethodOne: Call dataAnalyzeMethodTwo: Call dataAnalyzeMethodThree: Call CalculateNewInt
-': Call AggregatePorportionIntangibalAsset: Call FindMostAndLittestIntangibalIndustry: Call CalculationOfIndustryMeanInt: Call TwoRatioCompareToOriginal
+Call dataAnalyzeMethodOne: Call dataAnalyzeMethodTwo: Call dataAnalyzeMethodThree: Call CalculateNewInt: Call AggregatePorportionIntangibalAsset: Call FindMostAndLittestIntangibalIndustry: Call CalculationOfIndustryMeanInt: Call TwoRatioCompareToOriginal: Call CombineIDWithYear
 Application.ScreenUpdating = True
 End Sub
 Function GetMissingValue()
@@ -163,7 +162,7 @@ For position = 1 To countN
 Next
 
 With Worksheets("Fill zero with industry average")
-    With .Range(.Cells(2, 1), .Cells(finalRow, 27))
+    With .Range(.Cells(2, 1), .Cells(finalRow + 1, 27))
         .ClearContents: .Value2 = arrayInput
     End With
     ws.Range(ws.Cells(1, 1), ws.Cells(1, 27)).Copy Destination:=.Range("A1")
@@ -204,8 +203,8 @@ For wsCount = 0 To 2
             .Value = "Stock intangibel capital": .Columns.AutoFit
         End With
         
-        .Range(.Cells(2, 29), .Cells(finalRow, 29)) = arrayIntValue
-        .Range(.Cells(1, 29), .Cells(finalRow, 29)).Interior.Color = RGB(248, 248, 255)
+        .Range(.Cells(2, 29), .Cells(finalRow + 1, 29)) = arrayIntValue
+        .Range(.Cells(1, 29), .Cells(finalRow + 1, 29)).Interior.Color = RGB(248, 248, 255)
         
     End With
     '把int的计算结果放到AC列，然后给与列名和计算完后的数据，为了方便醒目区分不同需求的结果，每个结果用颜色分割
@@ -216,7 +215,7 @@ End Function
 Function AggregatePorportionIntangibalAsset()
 '为了更加方便的进行分析，目前是把每年所有企业的int/（total book value + int）整合得到一个平均值，然后total book value已经经过了通胀调整，统一以2021年为base年
 
-Dim resultDictionary As Object, dicElement, arrayOfResult#(), dictionaryOfDataSizeForEachYear As Object, intValue#, bookAssetValue#, cpiValue#
+Dim resultDictionary As Object, dicElement, arrayOfResult#(), dictionaryOfDataSizeForEachYear As Object
 Set resultDictionary = CreateObject("Scripting.Dictionary"): Set dictionaryOfDataSizeForEachYear = CreateObject("Scripting.Dictionary"): arrayOfWs = Split("Drop Missing Value,Fill with zero,Fill zero with industry average", ",")
 
 For wsCount = 0 To 2
@@ -293,7 +292,7 @@ For wsCount = 0 To 2
 Next
 
 End Function
-Function quickSort(sortArray#(), index&(), floorValue&, capValue&) As Variant
+Function quickSort(sortArray#(), index&(), floorValue&, capValue&)
 '很基础的一个单维度，单条件快速排序，没有过多可说的，自行去任何一个代码论坛搜索概念解释
 
 Dim baseValue#, swapValue#, floorPosition&, capPosition&
@@ -352,7 +351,7 @@ Next
 CalculationSGADivideCPI = SGADCPI
 End Function
 Function CalculationOfIndustryMeanInt()
-Dim dictionaryOfIndustry As Object, year, industry, arrayOfIndustry$(), dataYearContain%(), arrayOfEachMean#, finalResultRow As Byte, finalResultColumn As Byte, theMostRecentYear%, theMostPastYear%, index&
+Dim dictionaryOfIndustry As Object, year, Industry, arrayOfIndustry$(), dataYearContain%(), arrayOfEachMean#, finalResultRow As Byte, finalResultColumn As Byte, theMostRecentYear%, theMostPastYear%, index&
 Set dictionaryOfIndustry = CreateObject("Scripting.Dictionary"): arrayOfWs = Split("Drop Missing Value,Fill with zero,Fill zero with industry average", ",")
 For wsCount = 0 To 2
     Set ws = Worksheets(arrayOfWs(wsCount))
@@ -374,10 +373,10 @@ For wsCount = 0 To 2
             If arrayOfYear(arrayRow) = year Then arrayIndex(countN) = arrayRow: countN = countN + 1
         Next
         ReDim Preserve arrayIndex&(1 To countN - 1): finalResultColumn = 2: arrayOutPut(finalResultRow, 1) = year
-        For Each industry In dictionaryOfIndustry.Keys
-            countN = 0: arrayOutPut(1, finalResultColumn) = industry: arrayOfEachMean = 0
+        For Each Industry In dictionaryOfIndustry.Keys
+            countN = 0: arrayOutPut(1, finalResultColumn) = Industry: arrayOfEachMean = 0
             For arrayRow = 1 To UBound(arrayIndex)
-                If arrayOfIndustry(arrayIndex(arrayRow)) = industry Then index = arrayIndex(arrayRow): arrayOfEachMean = arrayIntValue(index) + arrayOfEachMean: countN = countN + 1
+                If arrayOfIndustry(arrayIndex(arrayRow)) = Industry Then index = arrayIndex(arrayRow): arrayOfEachMean = arrayIntValue(index) + arrayOfEachMean: countN = countN + 1
             Next
             If countN <> 0 Then arrayOfEachMean = arrayOfEachMean / countN Else: arrayOfEachMean = 0
             arrayOutPut(finalResultRow, finalResultColumn) = arrayOfEachMean: finalResultColumn = finalResultColumn + 1
@@ -395,21 +394,26 @@ For wsCount = 0 To 2
 Next
 End Function
 Function TwoRatioCompareToOriginal()
-Dim arrayOfNetIncome#(), arrayOfPPE#(), arrayOfMarketValue#(), cpiValue#, intValue#, netIncomeValue#, PPEValue#, SGAValue#, marketValue#, columnToPutValue As Byte
+Dim arrayOfNetIncome#(), arrayOfPPE#(), arrayInputTwo(), arrayOfMarketValue#(), cpiValue#, intValue#, netIncomeValue#, PPEValue#, SGAValue#, marketValue#, columnToPutValue As Byte
 arrayOfWs = Split("Drop Missing Value,Fill with zero,Fill zero with industry average", ",")
+With Worksheets(1)
+    arrayInputTwo = .Range(.Cells(2, 30), .Cells(.Cells(2, 30).End(xlDown).Row, 30)).Value2
+End With
+
 For wsCount = 0 To 2
     Set ws = Worksheets(arrayOfWs(wsCount))
     With ws
-        finalRow = .Cells(1, 1).End(xlDown).Row: arrayInput = .Range(.Cells(2, 1), .Cells(finalRow, 29)).Value2: finalRow = finalRow - 1
+        finalRow = .Cells(1, 1).End(xlDown).Row: arrayInput = .Range(.Cells(2, 1), .Cells(finalRow, 29)).Value2:  finalRow = finalRow - 1
     End With
+    
     ReDim resultArray#(1 To finalRow, 1 To 2)
     For arrayRow = 1 To finalRow
-        cpiValue = arrayInput(arrayRow, 7): intValue = arrayInput(arrayRow, 29): netIncomeValue = arrayInput(arrayRow, 6) * mostRecentCPI / cpiValue: PPEValue = arrayInput(arrayRow, 20) * mostRecentCPI / cpiValue: SGAValue = arrayInput(arrayRow, 4) * mostRecentCPI / cpiValue: marketValue = arrayInput(arrayRow, 26) * mostRecentCPI / cpiValue: netIncomeValue = netIncomeValue + SGAValue - intValue * depreciationRate
+        cpiValue = arrayInput(arrayRow, 7): intValue = arrayInput(arrayRow, 29): netIncomeValue = arrayInput(arrayRow, 6) * mostRecentCPI / cpiValue: PPEValue = arrayInput(arrayRow, 20) * mostRecentCPI / cpiValue: SGAValue = arrayInput(arrayRow, 4) * mostRecentCPI / cpiValue: marketValue = arrayInputTwo(arrayRow, 1) * mostRecentCPI / cpiValue: netIncomeValue = netIncomeValue + SGAValue - intValue * depreciationRate
         If PPEValue <> 0 Then resultArray(arrayRow, 1) = intValue / PPEValue Else: resultArray(arrayRow, 1) = 0
         If netIncomeValue <> 0 Then resultArray(arrayRow, 2) = marketValue / netIncomeValue Else: resultArray(arrayRow, 2) = 0
     Next
     With ws
-        columnToPutValue = Cells(1, 37).End(xlToRight).Column + 2
+        columnToPutValue = .Cells(1, 37).End(xlToRight).Column + 2
         With .Cells(1, columnToPutValue)
             .Value2 = "Int / PPE Ratio": .Offset(0, 1).Value2 = "P/E Ratio"
         End With
@@ -419,12 +423,47 @@ Next
 End Function
 Function CombineIDWithYear()
 
-arrayOfWs = Split("Drop Missing Value,Fill with zero,Fill zero with industry average", ",")
+Dim dicOfEQVFromMonthlyData As Object, dataFromMonthlySheet(), IDANDYearDataFromYearlyData$(), columnToPutValue As Byte, dicOfPriceFromMonthlyData As Object
+
+arrayOfWs = Split("Drop Missing Value,Fill with zero,Fill zero with industry average", ","): Set dicOfEQVFromMonthlyData = CreateObject("Scripting.Dictionary"): Set dicOfPriceFromMonthlyData = CreateObject("Scripting.Dictionary")
+
+With Worksheets(1)
+    dataFromMonthlySheet = .Range(.Cells(2, 29), .Cells(.Cells(2, 29).End(xlDown).Row, 31)).Value2
+End With
+
+For arrayRow = 1 To UBound(dataFromMonthlySheet)
+    dicOfEQVFromMonthlyData.Add dataFromMonthlySheet(arrayRow, 1), dataFromMonthlySheet(arrayRow, 2)
+    dicOfPriceFromMonthlyData.Add dataFromMonthlySheet(arrayRow, 1), dataFromMonthlySheet(arrayRow, 3)
+Next
+
+
 For wsCount = 0 To 2
     Set ws = Worksheets(arrayOfWs(wsCount))
     With ws
         finalRow = .Cells(1, 1).End(xlDown).Row: arrayInput = .Range(.Cells(2, 1), .Cells(finalRow, 29)).Value2: finalRow = finalRow - 1
     End With
+    ReDim resultArray#(1 To finalRow, 1 To 2): ReDim IDANDYearDataFromYearlyData$(1 To finalRow)
+    
+    For arrayRow = 1 To finalRow
+        IDANDYearDataFromYearlyData(arrayRow) = Trim(arrayInput(arrayRow, 1)) & Trim(Str(arrayInput(arrayRow, 2)))
+    Next
+    
+    For arrayRow = 1 To finalRow
+        resultArray(arrayRow, 1) = dicOfEQVFromMonthlyData(IDANDYearDataFromYearlyData(arrayRow)): resultArray(arrayRow, 2) = dicOfPriceFromMonthlyData(IDANDYearDataFromYearlyData(arrayRow))
+    Next
+    
+    With ws
+        columnToPutValue = .Cells(1, 37).End(xlToRight).Column + 5
+        With .Cells(1, columnToPutValue)
+            .Value2 = "Market EQV from monthly Data"
+            .Offset(0, 1).Value2 = "Share price from monthly Data"
+        End With
+        .Range(.Cells(2, columnToPutValue), .Cells(finalRow + 1, columnToPutValue + 1)).Value2 = resultArray
+        .Range(.Cells(1, columnToPutValue), .Cells(finalRow + 1, columnToPutValue + 1)).Columns.AutoFit
+    End With
+    
+    Erase resultArray, IDANDYearDataFromYearlyData
+Next
 
 End Function
 
@@ -432,6 +471,82 @@ Sub Workbook_Open()
 UserForm1.Show
 End Sub
 
+Function PortfolioCreation()
+Dim outPutOder&, n As Byte, resultRanking&(), tryToIdentifyClass As Boolean, numberOfElement As Byte, classContainN As Byte, arrayOfIndustryAndYear$(), dicOfIndustryAndYear As Object, industryObject, arrayOfIntToBookAssetRatio#(), arrayOfIntermediateRatio#(), arrayOfINtermediateIndex&(), totalDataAmountOfEachYearForThisIndustr&, arrayToSort, columnToPutValue As Byte
+arrayOfWs = Split("Drop Missing Value,Fill with zero,Fill zero with industry average", ","): Set dicOfIndustryAndYear = CreateObject("Scripting.Dictionary")
+
+For wsCount = 0 To 2
+    Set ws = Worksheets(arrayOfWs(wsCount))
+    
+    With ws
+        finalRow = .Cells(1, 1).End(xlDown).Row: arrayInput = .Range(.Cells(2, 1), .Cells(finalRow, 29)).Value2: finalRow = finalRow - 1
+    End With
+    
+    ReDim resultRanking&(1 To finalRow, 1 To 1): ReDim arrayOfIndustryAndYear$(1 To finalRow): ReDim arrayIndex&(1 To finalRow): ReDim arrayOfIntToBookAssetRatio#(1 To finalRow): countN = 0
+    
+    For arrayRow = 1 To finalRow
+        arrayOfIndustryAndYear(arrayRow) = CStr(arrayInput(arrayRow, 9)) & CStr(arrayInput(arrayRow, 2)): arrayIndex(arrayRow) = arrayRow: intValue = arrayInput(arrayRow, 29): cpiValue = arrayInput(arrayRow, 7): bookAssetValue = arrayInput(arrayRow, 17) * mostRecentCPI / cpiValue: arrayOfIntToBookAssetRatio(arrayRow) = (intValue / (bookAssetValue + intValue))
+        If Not dicOfIndustryAndYear.Exists(arrayOfIndustryAndYear(arrayRow)) Then dicOfIndustryAndYear.Add arrayOfIndustryAndYear(arrayRow), 1 Else: dicOfIndustryAndYear(arrayOfIndustryAndYear(arrayRow)) = dicOfIndustryAndYear(arrayOfIndustryAndYear(arrayRow)) + 1
+    Next
+    
+    For Each industryObject In dicOfIndustryAndYear
+        countN = 0: totalDataAmountOfEachYearForThisIndustr = dicOfIndustryAndYear(industryObject): ReDim arrayOfIntermediateRatio#(1 To totalDataAmountOfEachYearForThisIndustr): ReDim arrayOfINtermediateIndex&(1 To totalDataAmountOfEachYearForThisIndustr)
+        
+        For arrayRow = 1 To finalRow
+            If countN = totalDataAmountOfEachYearForThisIndustr Then Exit For
+            If arrayOfIndustryAndYear(arrayRow) = industryObject Then countN = countN + 1: arrayOfIntermediateRatio(countN) = arrayOfIntToBookAssetRatio(arrayRow): arrayOfINtermediateIndex(countN) = arrayIndex(arrayRow)
+        Next
+        
+        arrayToSort = quickSort(arrayOfIntermediateRatio, arrayOfINtermediateIndex, 1, countN): numberOfElement = countN / 5: classContainN = 0: n = 0: tryToIdentifyClass = True
+        
+        If countN Mod 5 = 0 Then
+        
+            For outPutOder = 1 To UBound(arrayToSort)
+                If classContainN = numberOfElement Then n = n + 1: classContainN = 0
+                resultRanking(arrayToSort(outPutOder), 1) = 1 + n: classContainN = classContainN + 1
+            Next
+             
+        ElseIf countN < 5 Then
+        
+            For outPutOder = 1 To UBound(arrayToSort)
+                resultRanking(arrayToSort(outPutOder), 1) = 5 - n: n = n + 1
+            Next
+            
+        Else
+            
+            For outPutOder = 1 To UBound(arrayToSort)
+                If n = 4 Then classContainN = 0
+                If classContainN = numberOfElement Then n = n + 1: classContainN = 0: tryToIdentifyClass = False
+                If n = 4 And countN - numberOfElement * 4 = 1 Then tryToIdentifyClass = True
+                If tryToIdentifyClass Then
+                    resultRanking(arrayToSort(outPutOder), 1) = 1 + n: classContainN = classContainN + 1
+                Else
+                    tryToIdentifyClass = True
+                    If Abs(arrayOfIntermediateRatio(outPutOder - 1) - arrayOfIntermediateRatio(outPutOder)) < Abs(arrayOfIntermediateRatio(outPutOder) - arrayOfIntermediateRatio(outPutOder + 1)) Then
+                        resultRanking(arrayToSort(outPutOder), 1) = 1 + n - 1: classContainN = classContainN + 1
+                    Else
+                        resultRanking(arrayToSort(outPutOder), 1) = 1 + n: classContainN = classContainN + 1
+                    End If
+                End If
+            Next
+            
+        End If
+            
+    Next
+    
+    With ws
+        columnToPutValue = .Cells(1, 37).End(xlToRight).Column + 7
+        With .Cells(1, columnToPutValue)
+            .Value2 = "ranking"
+        End With
+        .Range(.Cells(2, columnToPutValue), .Cells(finalRow + 1, columnToPutValue)).Value2 = resultRanking
+        .Range(.Cells(1, columnToPutValue), .Cells(finalRow + 1, columnToPutValue)).Columns.AutoFit
+    End With
+    
+    Erase resultRanking, arrayInput, arrayToSort, arrayOfIndustryAndYear, arrayOfIntermediateRatio, arrayOfIntToBookAssetRatio: dicOfIndustryAndYear.RemoveAll
+Next
+
+End Function
 Option Explicit
 Dim finalColumn As Byte, ws As Worksheet, arrayOutPut(), arrayOfCPI#(), wsCount As Byte, finalRow&, arrayIndex&(), arrayIntValue#(), countN&, arrayRow&, arrayInput, arrayOfSGA#(), arrayColumnN&, resultArray(), arrayOfColumnWithNull&(), arrayOfCompanyID&(), arrayOfWs$(), arrayOfYear%(), arrayOfMethodName$(): Const depreciationRate As Double = 0.15: Const mostRecentCPI As Double = 124.266413825838
 
@@ -573,7 +688,7 @@ With Me.ListBox1
 End With
 End Function
 Function CalculationOfIndustryMeanIntTwo()
-Dim dictionaryOfIndustry As Object, year, industry, arrayOfIndustry$(), dataYearContain%(), arrayOfEachMean#, finalResultRow As Byte, finalResultColumn As Byte, theMostRecentYear%, theMostPastYear%, index&
+Dim dictionaryOfIndustry As Object, year, Industry, arrayOfIndustry$(), dataYearContain%(), arrayOfEachMean#, finalResultRow As Byte, finalResultColumn As Byte, theMostRecentYear%, theMostPastYear%, index&
 Set dictionaryOfIndustry = CreateObject("Scripting.Dictionary"): arrayOfWs = Split("Drop Missing Value,Fill with zero,Fill zero with industry average", ","): Set ws = Worksheets(ComboBox1.Text)
 With ws
     finalRow = .Cells(1, 1).End(xlDown).Row: arrayInput = .Range(.Cells(2, 1), .Cells(finalRow, 29)).Value2: theMostRecentYear = WorksheetFunction.Max(.Range(.Cells(2, 2), .Cells(finalRow, 2))): theMostPastYear = WorksheetFunction.Min(.Range(.Cells(2, 2), .Cells(finalRow, 2)))
@@ -593,10 +708,10 @@ For Each year In dataYearContain
         If arrayOfYear(arrayRow) = year Then arrayIndex(countN) = arrayRow: countN = countN + 1
     Next
     ReDim Preserve arrayIndex&(1 To countN - 1): finalResultColumn = 2: arrayOutPut(finalResultRow, 1) = year
-    For Each industry In dictionaryOfIndustry.Keys
-        countN = 0: arrayOutPut(1, finalResultColumn) = industry: arrayOfEachMean = 0
+    For Each Industry In dictionaryOfIndustry.Keys
+        countN = 0: arrayOutPut(1, finalResultColumn) = Industry: arrayOfEachMean = 0
         For arrayRow = 1 To UBound(arrayIndex)
-            If arrayOfIndustry(arrayIndex(arrayRow)) = industry Then index = arrayIndex(arrayRow): arrayOfEachMean = arrayIntValue(index) + arrayOfEachMean: countN = countN + 1
+            If arrayOfIndustry(arrayIndex(arrayRow)) = Industry Then index = arrayIndex(arrayRow): arrayOfEachMean = arrayIntValue(index) + arrayOfEachMean: countN = countN + 1
         Next
         If countN <> 0 Then arrayOfEachMean = arrayOfEachMean / countN Else: arrayOfEachMean = 0
         arrayOutPut(finalResultRow, finalResultColumn) = arrayOfEachMean: finalResultColumn = finalResultColumn + 1
